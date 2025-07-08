@@ -58,7 +58,7 @@ jobs:
       - name: Checkout target repo
         uses: actions/checkout@v3
         with:
-          repository: ${{steps.get_basic_info.outputs.author}}/dify-plugins
+          repository: ${{steps.get_basic_info.outputs.author}}/milvus-dify-plugin
           path: dify-plugins
           token: ${{ secrets.PLUGIN_ACTION }}
           fetch-depth: 1

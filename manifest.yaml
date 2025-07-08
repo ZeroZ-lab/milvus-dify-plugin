@@ -1,6 +1,6 @@
 version: 0.1.0
 type: plugin
-author: zeroz_lab
+author: zeroz-lab
 name: milvus
 label:
   en_US: Milvus Vector Database
