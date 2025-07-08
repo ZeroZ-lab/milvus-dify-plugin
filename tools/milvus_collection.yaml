@@ -46,16 +46,16 @@ parameters:
           en_US: "Check Collection Exists"
           zh_Hans: "检查集合是否存在"
           pt_BR: "Verificar se a Coleção Existe"
-      - value: create
-        label:
-          en_US: "Create Collection"
-          zh_Hans: "创建集合"
-          pt_BR: "Criar Coleção"
-      - value: drop
-        label:
-          en_US: "Drop Collection"
-          zh_Hans: "删除集合"
-          pt_BR: "Excluir Coleção"
+      # - value: create
+      #   label:
+      #     en_US: "Create Collection"
+      #     zh_Hans: "创建集合"
+      #     pt_BR: "Criar Coleção"
+      # - value: drop
+      #   label:
+      #     en_US: "Drop Collection"
+      #     zh_Hans: "删除集合"
+      #     pt_BR: "Excluir Coleção"
   - name: collection_name
     type: string
     required: false

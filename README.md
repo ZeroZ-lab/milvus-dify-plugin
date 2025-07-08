@@ -9,8 +9,6 @@ A plugin that integrates Milvus vector database with the Dify platform, providin
 - **Describe Collection**: Get detailed collection information
 - **Collection Stats**: Retrieve collection statistics
 - **Check Existence**: Verify if collections exist
-- **Create Collection**: Create new collections
-- **Drop Collection**: Delete specified collections
 
 ### 📥 Data Operations
 - **Insert Data**: Add vectors and metadata to collections
