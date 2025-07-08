@@ -58,8 +58,8 @@ jobs:
       - name: Checkout target repo
         uses: actions/checkout@v3
         with:
-          repository: zeroz-lab/milvus-dify-plugin
-          path: 
+          repository: ${{steps.get_basic_info.outputs.author}}/dify-plugins
+          path: dify-plugins
           token: ${{ secrets.PLUGIN_ACTION }}
           fetch-depth: 1
           persist-credentials: true
@@ -99,7 +99,7 @@ jobs:
           GH_TOKEN: ${{ secrets.PLUGIN_ACTION }}
         run: |
           gh pr create \
-            --repo langgenius/dify-plugins \
+            --repo ${{ steps.get_basic_info.outputs.author }}/milvus-dify-plugin \
             --head "${{ steps.get_basic_info.outputs.author }}:${{ steps.get_basic_info.outputs.plugin_name }}-${{ steps.get_basic_info.outputs.version }}" \
             --base main \
             --title "bump ${{ steps.get_basic_info.outputs.plugin_name }} plugin to version ${{ steps.get_basic_info.outputs.version }}" \
