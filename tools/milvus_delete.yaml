@@ -1,6 +1,6 @@
 identity:
   name: "milvus_delete"
-  author: "zeroz_jq"
+  author: "zeroz-lab"
   label:
     en_US: "Milvus Data Delete"
     zh_Hans: "Milvus 数据删除"

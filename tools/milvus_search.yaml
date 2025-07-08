@@ -1,6 +1,6 @@
 identity:
   name: "milvus_search"
-  author: "zeroz_jq"
+  author: "zeroz-lab"
   label:
     en_US: "Milvus Vector Search"
     zh_Hans: "Milvus 向量搜索"

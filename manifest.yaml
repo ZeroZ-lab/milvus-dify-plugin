@@ -8,9 +8,9 @@ label:
   zh_Hans: Milvus
   pt_BR: Banco de Dados Vetorial Milvus
 description:
-  en_US: Complete Milvus vector database integration for AI applications with collection management, vector search, data operations, and more
-  ja_JP: AI アプリケーション向けの完全な Milvus ベクトルデータベース統合：コレクション管理、ベクトル検索、データ操作など
-  zh_Hans: 为AI应用提供完整的Milvus向量数据库集成，包括集合管理、向量搜索、数据操作等功能
+  en_US: Complete Milvus vector database integration for Dify applications with collection management, vector search, data operations, and more
+  ja_JP: Dify アプリケーション向けの完全な Milvus ベクトルデータベース統合：コレクション管理、ベクトル検索、データ操作など
+  zh_Hans: 为Dify应用提供完整的Milvus向量数据库集成，包括集合管理、向量搜索、数据操作等功能
   pt_BR: Integração completa do banco de dados vetorial Milvus para aplicações de IA com gerenciamento de coleções, busca vetorial, operações de dados e muito mais
 icon: icon.svg
 resource:

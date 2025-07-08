@@ -1,6 +1,6 @@
 identity:
   name: "milvus_insert"
-  author: "zeroz_jq"
+  author: "zeroz-lab"
   label:
     en_US: "Milvus Data Insert"
     zh_Hans: "Milvus 数据插入"

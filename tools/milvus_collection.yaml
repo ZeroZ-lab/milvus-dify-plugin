@@ -1,6 +1,6 @@
 identity:
   name: "milvus_collection"
-  author: "zeroz_jq"
+  author: "zeroz-lab"
   label:
     en_US: "Milvus Collection Manager"
     zh_Hans: "Milvus 集合管理器"
