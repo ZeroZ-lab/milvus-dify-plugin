@@ -1,4 +1,4 @@
-version: 0.1.0
+version: 0.1.2
 type: plugin
 author: zeroz-lab
 name: milvus
@@ -20,7 +20,7 @@ plugins:
   tools:
     - provider/milvus.yaml
 meta:
-  version: 0.1.2
+  version: 0.0.1
   arch:
     - amd64
     - arm64
