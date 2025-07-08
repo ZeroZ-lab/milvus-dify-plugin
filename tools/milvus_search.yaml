@@ -78,6 +78,20 @@ parameters:
       pt_BR: "Expressão de filtro para campos escalares (ex: 'age > 18 and status == \"active\"')"
     llm_description: "Boolean expression for filtering results based on scalar fields"
     form: llm
+  - name: anns_field
+    type: string
+    required: false
+    default: "vector"
+    label:
+      en_US: "Vector Field Name"
+      zh_Hans: "向量字段名称"
+      pt_BR: "Nome do Campo Vetorial"
+    human_description:
+      en_US: "The name of the vector field to search against. Defaults to 'vector' if not provided."
+      zh_Hans: "要进行搜索的向量字段的名称。如果未提供，则默认为 'vector'。"
+      pt_BR: "O nome do campo vetorial para pesquisar. O padrão é 'vector' se não for fornecido."
+    llm_description: "The name of the vector field for similarity search. Defaults to 'vector' if not specified."
+    form: llm
   - name: metric_type
     type: select
     required: false

@@ -242,7 +242,7 @@ class MilvusHttpClient:
         })
         return response.get('data', {})
     
-    def get_collection_stats(self, collection_name: str):
+    def get_collection_stats(self, collection_name: str, timeout: Optional[float] = None) -> dict:
         """获取集合统计信息"""
         logger.debug(f"📊 [DEBUG] get_collection_stats() called for: {collection_name}")
         
@@ -299,46 +299,55 @@ class MilvusHttpClient:
         
         return self._make_request('POST', '/v2/vectordb/entities/insert', request_data)
     
-    def upsert(self, collection_name: str, data: List[Dict[str, Any]], partition_name: Optional[str] = None):
-        """更新插入数据"""
-        request_data = {
+    def upsert(self, collection_name: str, data: list[dict[str, Any]], partition_name: Optional[str] = None):
+        """插入或更新数据"""
+        request_data: dict[str, Any] = {
             'collectionName': collection_name,
             'data': data
         }
-        
         if partition_name:
             request_data['partitionName'] = partition_name
-        
         return self._make_request('POST', '/v2/vectordb/entities/upsert', request_data)
     
-    def search(self, collection_name: str, data: List[List[float]], anns_field: str = "vector",
-               limit: int = 10, output_fields: Optional[List[str]] = None, filter: Optional[str] = None,
-               search_params: Optional[dict] = None, partition_names: Optional[List[str]] = None):
+    def search(
+        self,
+        collection_name: str,
+        data: list[list[float]],
+        anns_field: str = "vector",
+        limit: int = 10,
+        output_fields: Optional[list[str]] = None,
+        filter: Optional[str] = None,
+        search_params: Optional[dict] = None,
+        partition_names: Optional[list[str]] = None,
+        **kwargs
+    ) -> list:
         """向量搜索"""
-        request_data: Dict[str, Any] = {
-            'collectionName': collection_name,
-            'data': data,
-            'annsField': anns_field,
-            'limit': limit
+        payload: dict[str, Any] = {
+            "collectionName": collection_name,
+            "data": data,
+            "annsField": anns_field,
+            "limit": limit
         }
-        
+
+        # 添加可选参数
         if output_fields:
-            request_data['outputFields'] = output_fields
-        
+            payload["outputFields"] = output_fields
         if filter:
-            request_data['filter'] = filter
-        
+            payload["filter"] = filter
         if search_params:
-            request_data['searchParams'] = search_params
-        
+            payload["searchParams"] = search_params
         if partition_names:
-            request_data['partitionNames'] = partition_names
-        
-        response = self._make_request('POST', '/v2/vectordb/entities/search', request_data)
+            payload["partitionNames"] = partition_names
+
+        response = self._make_request(
+            "POST", 
+            "/v2/vectordb/entities/search", 
+            payload
+        )
         return response.get('data', [])
     
-    def query(self, collection_name: str, filter: Optional[str] = None, output_fields: Optional[List[str]] = None,
-              limit: Optional[int] = None, partition_names: Optional[List[str]] = None):
+    def query(self, collection_name: str, filter: Optional[str] = None, output_fields: Optional[list[str]] = None,
+              limit: Optional[int] = None, partition_names: Optional[list[str]] = None):
         """查询数据"""
         request_data: Dict[str, Any] = {
             'collectionName': collection_name
@@ -376,23 +385,39 @@ class MilvusHttpClient:
         response = self._make_request('POST', '/v2/vectordb/entities/get', request_data)
         return response.get('data', [])
     
-    def delete(self, collection_name: str, ids: Optional[List[Any]] = None, filter: Optional[str] = None,
+    def delete(self, collection_name: str, ids: Optional[list[Any]] = None, filter: Optional[str] = None,
                partition_name: Optional[str] = None):
         """删除数据"""
-        request_data: Dict[str, Any] = {
+        # 必须提供 ids (非空列表) 或 filter (非空字符串)
+        has_valid_ids = isinstance(ids, list) and len(ids) > 0
+        has_valid_filter = isinstance(filter, str) and len(filter.strip()) > 0
+
+        if not has_valid_ids and not has_valid_filter:
+            raise ValueError("Either a non-empty list of 'ids' or a non-empty 'filter' string must be provided for the delete operation.")
+
+        request_data: dict[str, Any] = {
             'collectionName': collection_name
         }
         
-        if ids:
-            request_data['id'] = ids
-        elif filter:
+        # 构建 filter 表达式
+        if has_valid_ids and not has_valid_filter:
+            # 根据ID类型（字符串或数字）构建 "in" 表达式
+            if ids and all(isinstance(i, str) for i in ids):
+                id_list_str = ", ".join(f'"{i}"' for i in ids)
+            elif ids:
+                id_list_str = ", ".join(str(i) for i in ids)
+            else:
+                id_list_str = ""
+            request_data['filter'] = f"id in [{id_list_str}]"
+        elif has_valid_filter:
             request_data['filter'] = filter
-        else:
-            raise ValueError("Either 'ids' or 'filter' must be provided")
         
+        # 如果同时有 ids 和 filter，优先使用 filter
+        logger.debug(f"🗑️ [DEBUG] Delete operation with filter: {request_data.get('filter')}")
+
         if partition_name:
             request_data['partitionName'] = partition_name
-        
+
         return self._make_request('POST', '/v2/vectordb/entities/delete', request_data)
     
     def close(self):

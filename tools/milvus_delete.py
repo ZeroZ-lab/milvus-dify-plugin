@@ -1,40 +1,99 @@
 from typing import Any, List, Union
 from collections.abc import Generator
+import json
+import ast
+import logging
 
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 from .milvus_base import MilvusBaseTool
 
+logger = logging.getLogger(__name__)
 
 class MilvusDeleteTool(MilvusBaseTool, Tool):
     """Milvus 数据删除工具"""
     
-    def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
+    def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
+        """执行删除操作"""
         try:
-            # 功能暂未实现
-            raise ValueError("Delete operation is not yet implemented. This feature is under development.")
+            collection_name = tool_parameters.get("collection_name")
+            ids_param = tool_parameters.get("ids")
+            filter_expr = tool_parameters.get("filter")
+            partition_name = tool_parameters.get("partition_name", "")
+
+            if not collection_name or not self._validate_collection_name(collection_name):
+                raise ValueError("Invalid or missing collection name.")
+
+            logger.debug(f"🔍 [DEBUG] Delete parameters - collection: {collection_name}, ids: {ids_param}, filter: {filter_expr}")
             
-            # 以下代码待实现
-            # collection_name = tool_parameters.get("collection_name")
-            # 
-            # if not collection_name:
-            #     raise ValueError("Collection name is required")
-            # 
-            # if not self._validate_collection_name(collection_name):
-            #     raise ValueError("Invalid collection name format")
-            # 
-            # with self._get_milvus_client(self.runtime.credentials) as client:
-            #     # 检查集合是否存在
-            #     if not client.has_collection(collection_name):
-            #         raise ValueError(f"Collection '{collection_name}' does not exist")
-            #     
-            #     result = self._perform_delete(client, collection_name, tool_parameters)
-            #     yield from self._create_success_message(result)
+            # 处理 ids 参数
+            ids = None
+            if ids_param:
+                ids = self._parse_ids(ids_param)
+                logger.debug(f"🔢 [DEBUG] Parsed IDs: {ids}")
+                
+            # 校验 ids 和 filter
+            if not ids and not filter_expr:
+                raise ValueError("Either 'ids' or 'filter' must be provided for the delete operation.")
+
+            with self._get_milvus_client(self.runtime.credentials) as client:
+                if not client.has_collection(collection_name):
+                    raise ValueError(f"Collection '{collection_name}' does not exist.")
+                
+                # 执行删除
+                result = client.delete(
+                    collection_name=collection_name,
+                    ids=ids,
+                    filter=filter_expr,
+                    partition_name=partition_name if partition_name else None
+                )
+                
+                response_data = {
+                    "operation": "delete",
+                    "collection_name": collection_name,
+                    "success": True,
+                    "message": f"Delete operation was successful for collection '{collection_name}'."
+                }
+                yield from self._create_success_message(response_data)
                 
         except Exception as e:
+            logger.error(f"❌ [DEBUG] Delete operation failed: {str(e)}")
             yield from self._handle_error(e)
-    
-    def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage]:
+
+    def _parse_ids(self, ids_param: Union[str, List]) -> List:
+        """安全地解析 IDs 参数"""
+        if isinstance(ids_param, list):
+            return ids_param
+        
+        if isinstance(ids_param, str):
+            try:
+                # 尝试使用 json.loads 解析
+                try:
+                    parsed_ids = json.loads(ids_param)
+                    if isinstance(parsed_ids, list):
+                        return parsed_ids
+                except json.JSONDecodeError:
+                    # 如果 JSON 解析失败，尝试使用 ast.literal_eval
+                    parsed_ids = ast.literal_eval(ids_param)
+                    if isinstance(parsed_ids, list):
+                        return parsed_ids
+                    
+                # 如果解析结果不是列表，但是是单个值，则包装成列表
+                if not isinstance(parsed_ids, list):
+                    return [parsed_ids]
+                    
+                return parsed_ids
+            except (json.JSONDecodeError, ValueError, SyntaxError):
+                # 如果所有解析方法都失败，将字符串作为单个ID处理
+                return [ids_param]
+        
+        # 如果不是字符串也不是列表，但有值，则作为单个ID处理
+        if ids_param is not None:
+            return [ids_param]
+            
+        return []
+
+    def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage, None, None]:
         """统一的错误处理"""
         error_msg = str(error)
         yield self.create_json_message({
@@ -43,94 +102,10 @@ class MilvusDeleteTool(MilvusBaseTool, Tool):
             "error_type": type(error).__name__
         })
     
-    def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage]:
+    def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
         """创建成功响应消息"""
         response = {
             "success": True,
             **data
         }
-        yield self.create_json_message(response)
-    
-    def _perform_delete(self, client, collection_name: str, params: dict[str, Any]) -> dict[str, Any]:
-        """执行数据删除"""
-        # 获取删除参数
-        ids = params.get("ids")
-        filter_expr = params.get("filter")
-        
-        # 必须提供 ids 或 filter 之一
-        if not ids and not filter_expr:
-            raise ValueError("Either 'ids' or 'filter' must be provided")
-        
-        # 如果两者都提供，优先使用 ids
-        if ids and filter_expr:
-            filter_expr = None
-        
-        # 获取分区名称（可选）
-        partition_name = params.get("partition_name")
-        
-        # 解析 ids 参数
-        if ids:
-            ids = self._parse_ids(ids)
-        
-        try:
-            # 执行删除 - 使用 HTTP API
-            delete_result = client.delete(
-                collection_name=collection_name,
-                ids=ids if ids else None,
-                filter=filter_expr,
-                partition_name=partition_name
-            )
-            
-            # 处理删除结果 - HTTP API 返回格式
-            delete_count = 0
-            deleted_ids = None
-            
-            if delete_result and "data" in delete_result:
-                data = delete_result["data"]
-                delete_count = data.get("deleteCount", 0)
-                deleted_ids = data.get("deleteIds", [])
-            else:
-                # 如果没有返回详细信息，估算删除数量
-                delete_count = len(ids) if ids else 0
-            
-            return {
-                "operation": "delete",
-                "collection_name": collection_name,
-                "delete_type": "by_ids" if ids else "by_filter",
-                "ids": ids,
-                "filter": filter_expr,
-                "partition_name": partition_name,
-                "delete_count": delete_count,
-                "deleted_ids": deleted_ids
-            }
-            
-        except Exception as e:
-            raise ValueError(f"Delete failed: {str(e)}")
-    
-    def _parse_ids(self, ids: Union[str, List]) -> List:
-        """解析 ID 列表"""
-        if isinstance(ids, str):
-            try:
-                import json
-                parsed_ids = json.loads(ids)
-            except json.JSONDecodeError:
-                # 尝试按逗号分隔解析
-                parsed_ids = [id_str.strip() for id_str in ids.split(",") if id_str.strip()]
-        else:
-            parsed_ids = ids
-        
-        if not isinstance(parsed_ids, list):
-            raise ValueError("IDs must be a list")
-        
-        if not parsed_ids:
-            raise ValueError("IDs list cannot be empty")
-        
-        # 尝试转换为数字（如果可能）
-        converted_ids = []
-        for id_val in parsed_ids:
-            if isinstance(id_val, str) and id_val.isdigit():
-                converted_ids.append(int(id_val))
-            else:
-                converted_ids.append(id_val)
-        
-        return converted_ids 
+        yield self.create_json_message(response) 

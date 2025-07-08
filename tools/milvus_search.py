@@ -1,47 +1,78 @@
-from typing import Any, Optional
+from typing import Any, List, Dict
 from collections.abc import Generator
+import json
+import logging
 
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 from .milvus_base import MilvusBaseTool
 
+logger = logging.getLogger(__name__)
 
 class MilvusSearchTool(MilvusBaseTool, Tool):
     """Milvus 向量搜索工具"""
-    
-    def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
+
+    def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
+        """执行搜索工具"""
         try:
+            # 解析和验证参数
             collection_name = tool_parameters.get("collection_name")
-            query_vector = tool_parameters.get("query_vector")
-            
-            if not collection_name:
-                raise ValueError("Collection name is required")
-            
-            if not self._validate_collection_name(collection_name):
-                raise ValueError("Invalid collection name format")
-            
-            if not query_vector:
-                raise ValueError("Query vector is required")
-            
-            # 解析查询向量
-            if isinstance(query_vector, str):
-                query_vector = self._parse_vector_data(query_vector)
-            
-            if not isinstance(query_vector, list):
-                raise ValueError("Query vector must be a list")
-            
+            vector_str = tool_parameters.get("query_vector")
+
+            if not collection_name or not self._validate_collection_name(collection_name):
+                raise ValueError("Invalid or missing collection name.")
+
+            if not vector_str:
+                raise ValueError("Vector data is required.")
+
+            try:
+                vector_data = self._parse_vector_data(vector_str)
+            except ValueError as e:
+                raise ValueError(str(e))
+
+            # 获取其他参数
+            limit = int(tool_parameters.get("limit", 10))
+            output_fields_str = tool_parameters.get("output_fields")
+            filter_expr = tool_parameters.get("filter")
+            search_params_str = tool_parameters.get("search_params")
+            anns_field = tool_parameters.get("anns_field", "vector")
+
+            # 准备参数
+            search_params = self._parse_search_params(search_params_str)
+            output_fields = [f.strip() for f in output_fields_str.split(',')] if output_fields_str else None
+
+            # 执行搜索
             with self._get_milvus_client(self.runtime.credentials) as client:
-                # 检查集合是否存在
                 if not client.has_collection(collection_name):
-                    raise ValueError(f"Collection '{collection_name}' does not exist")
+                    raise ValueError(f"Collection '{collection_name}' does not exist.")
+
+                logger.info(f"🔍 [DEBUG] Searching in collection '{collection_name}' with limit={limit}, anns_field='{anns_field}'")
+
+                results = client.search(
+                    collection_name=collection_name,
+                    data=[vector_data],
+                    anns_field=anns_field,
+                    limit=limit,
+                    output_fields=output_fields,
+                    filter=filter_expr,
+                    search_params=search_params,
+                    partition_names=None # partition_names not supported in this tool
+                )
+
+                logger.info(f"✅ [DEBUG] Search completed. Found {len(results)} results.")
                 
-                result = self._perform_search(client, collection_name, query_vector, tool_parameters)
-                yield from self._create_success_message(result)
-                
+                response_data = {
+                    "operation": "search",
+                    "collection_name": collection_name,
+                    "results": results,
+                    "result_count": len(results)
+                }
+                yield from self._create_success_message(response_data)
+
         except Exception as e:
             yield from self._handle_error(e)
-    
-    def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage]:
+
+    def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage, None, None]:
         """统一的错误处理"""
         error_msg = str(error)
         yield self.create_json_message({
@@ -49,139 +80,11 @@ class MilvusSearchTool(MilvusBaseTool, Tool):
             "error": error_msg,
             "error_type": type(error).__name__
         })
-    
-    def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage]:
+
+    def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
         """创建成功响应消息"""
         response = {
             "success": True,
             **data
         }
         yield self.create_json_message(response)
-    
-    def _perform_search(self, client, collection_name: str, query_vector: list, params: dict[str, Any]) -> dict[str, Any]:
-        """执行向量搜索"""
-        # 获取搜索参数
-        limit = params.get("limit", 10)
-        try:
-            limit = int(limit)
-        except (ValueError, TypeError):
-            limit = 10
-        
-        if limit <= 0 or limit > 1000:
-            limit = min(max(limit, 1), 1000)
-        
-        # 获取输出字段
-        output_fields = params.get("output_fields")
-        if output_fields and isinstance(output_fields, str):
-            output_fields = [field.strip() for field in output_fields.split(",") if field.strip()]
-        elif not output_fields:
-            output_fields = None
-        
-        # 获取过滤条件
-        filter_expr = params.get("filter")
-        
-        # 获取搜索参数
-        search_params = self._build_search_params(params)
-        
-        # 获取分区名称
-        partition_names = params.get("partition_names")
-        if partition_names and isinstance(partition_names, str):
-            partition_names = [name.strip() for name in partition_names.split(",") if name.strip()]
-        
-        # 获取向量字段名称
-        anns_field = params.get("anns_field", "vector")
-        
-        # 执行搜索 - 使用 HTTP API
-        search_results = client.search(
-            collection_name=collection_name,
-            data=[query_vector],  # 需要包装为列表
-            anns_field=anns_field,
-            limit=limit,
-            output_fields=output_fields,
-            filter=filter_expr,
-            search_params=search_params,
-            partition_names=partition_names
-        )
-        
-        # 处理搜索结果 - HTTP API 返回格式不同
-        results = []
-        if search_results and len(search_results) > 0:
-            # HTTP API 返回的格式：[[{"id": x, "distance": y, ...}]] 或 [{"id": x, "distance": y, ...}]
-            search_data = search_results[0] if isinstance(search_results[0], list) else search_results
-            
-            for hit in search_data:
-                if isinstance(hit, dict):
-                    result_item = {
-                        "id": hit.get("id"),
-                        "distance": hit.get("distance"),
-                        "score": hit.get("distance")  # 兼容性
-                    }
-                    
-                    # 添加实体数据
-                    if "entity" in hit:
-                        result_item["entity"] = hit["entity"]
-                    # 如果没有entity字段，直接添加其他字段
-                    else:
-                        for key, value in hit.items():
-                            if key not in ["id", "distance"]:
-                                result_item[key] = value
-                    
-                    results.append(result_item)
-        
-        return {
-            "operation": "search",
-            "collection_name": collection_name,
-            "query_vector_dimension": len(query_vector),
-            "anns_field": anns_field,
-            "limit": limit,
-            "filter": filter_expr,
-            "search_params": search_params,
-            "partition_names": partition_names,
-            "results": results,
-            "result_count": len(results)
-        }
-    
-    def _build_search_params(self, params: dict[str, Any]) -> dict[str, Any]:
-        """构建搜索参数"""
-        search_params = {}
-        
-        # 距离度量类型
-        metric_type = params.get("metric_type")
-        if metric_type:
-            search_params["metric_type"] = metric_type
-        
-        # 搜索精度级别
-        level = params.get("level")
-        if level:
-            try:
-                level = int(level)
-                if 1 <= level <= 5:
-                    search_params["level"] = level
-            except (ValueError, TypeError):
-                pass
-        
-        # 范围搜索参数
-        radius = params.get("radius")
-        range_filter = params.get("range_filter")
-        
-        if radius is not None:
-            try:
-                search_params["radius"] = float(radius)
-            except (ValueError, TypeError):
-                pass
-        
-        if range_filter is not None:
-            try:
-                search_params["range_filter"] = float(range_filter)
-            except (ValueError, TypeError):
-                pass
-        
-        # 其他搜索参数
-        extra_params = params.get("search_params")
-        if extra_params:
-            if isinstance(extra_params, str):
-                extra_params = self._parse_search_params(extra_params)
-            if isinstance(extra_params, dict):
-                search_params.update(extra_params)
-        
-        return search_params 
