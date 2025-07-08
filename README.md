@@ -33,35 +33,6 @@ Configure your Milvus connection in the Dify platform:
 - **Token**: Authentication token (optional, format: `username:password`)
 - **Database**: Target database name (default: `default`)
 
-## Usage Examples
-
-### Collection Operations
-```python
-# List all collections
-{"operation": "list"}
-
-# Describe collection
-{"operation": "describe", "collection_name": "my_collection"}
-
-# Create collection
-{"operation": "create", "collection_name": "my_collection"}
-```
-
-### Data Operations
-```python
-# Insert data
-{
-  "collection_name": "my_collection",
-  "data": [{"id": 1, "vector": [0.1, 0.2, 0.3], "metadata": "sample"}]
-}
-
-# Vector search
-{
-  "collection_name": "my_collection",
-  "query_vector": [0.1, 0.2, 0.3],
-  "limit": 10
-}
-```
 
 ## License
 

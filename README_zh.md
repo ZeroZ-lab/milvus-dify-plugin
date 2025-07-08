@@ -33,36 +33,6 @@
 - **Token**: 认证令牌 (可选，格式: `username:password`)
 - **Database**: 目标数据库名称 (默认: `default`)
 
-## 使用示例
-
-### 集合操作
-```python
-# 列出所有集合
-{"operation": "list"}
-
-# 描述集合
-{"operation": "describe", "collection_name": "my_collection"}
-
-# 创建集合
-{"operation": "create", "collection_name": "my_collection"}
-```
-
-### 数据操作
-```python
-# 插入数据
-{
-  "collection_name": "my_collection",
-  "data": [{"id": 1, "vector": [0.1, 0.2, 0.3], "metadata": "sample"}]
-}
-
-# 向量搜索
-{
-  "collection_name": "my_collection",
-  "query_vector": [0.1, 0.2, 0.3],
-  "limit": 10
-}
-```
-
 ## 许可证
 
 MIT 许可证 
