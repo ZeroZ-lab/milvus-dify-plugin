@@ -58,8 +58,8 @@ jobs:
       - name: Checkout target repo
         uses: actions/checkout@v3
         with:
-          repository: ${{steps.get_basic_info.outputs.author}}/milvus-dify-plugin
-          path: dify-plugins
+          repository: zeroz-lab/milvus-dify-plugin
+          path: 
           token: ${{ secrets.PLUGIN_ACTION }}
           fetch-depth: 1
           persist-credentials: true
