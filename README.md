@@ -2,6 +2,8 @@
 
 A plugin that integrates Milvus vector database with the Dify platform, providing vector operations for collection management, data insertion, search, and querying.
 
+[中文文档](./README_zh.md) | [English](./README.md)
+
 ## Features
 
 ### 🗂️ Collection Management
