@@ -25,18 +25,45 @@ parameters:
       pt_BR: "O nome da coleção para pesquisar"
     llm_description: "The name of the collection to perform vector search in"
     form: llm
+  - name: embedding_model
+    type: model-selector
+    scope: "text-embedding"
+    required: true
+    label:
+      en_US: "Embedding Model"
+      zh_Hans: "嵌入模型"
+      pt_BR: "Modelo de Incorporação"
+    human_description:
+      en_US: "The embedding model to use for converting text to vector."
+      zh_Hans: "用于将文本转换为向量的嵌入模型。"
+      pt_BR: "O modelo de incorporação a ser usado para converter texto em vetor."
+    llm_description: "The text embedding model to use for converting query text to vector representation"
+    form: form
   - name: query_vector
     type: string
-    required: true
+    required: false
     label:
       en_US: "Query Vector"
       zh_Hans: "查询向量"
       pt_BR: "Vetor de Consulta"
     human_description:
-      en_US: "The query vector as JSON array (e.g., [0.1, 0.2, 0.3])"
-      zh_Hans: "查询向量，JSON数组格式（例如：[0.1, 0.2, 0.3]）"
-      pt_BR: "O vetor de consulta como array JSON (ex: [0.1, 0.2, 0.3])"
-    llm_description: "The query vector as a JSON array of numbers for similarity search"
+      en_US: "The query vector as JSON array (e.g., [0.1, 0.2, 0.3]). Required if query_text is not provided."
+      zh_Hans: "查询向量，JSON数组格式（例如：[0.1, 0.2, 0.3]）。如果未提供查询文本，则为必填项。"
+      pt_BR: "O vetor de consulta como array JSON (ex: [0.1, 0.2, 0.3]). Obrigatório se query_text não for fornecido."
+    llm_description: "The query vector as a JSON array of numbers for similarity search. Required if query_text is not provided."
+    form: llm
+  - name: query_text
+    type: string
+    required: false
+    label:
+      en_US: "Query Text"
+      zh_Hans: "查询文本"
+      pt_BR: "Texto de Consulta"
+    human_description:
+      en_US: "Text to be converted to a vector using text embedding. Required if query_vector is not provided."
+      zh_Hans: "要使用文本嵌入转换为向量的文本。如果未提供查询向量，则为必填项。"
+      pt_BR: "Texto a ser convertido em um vetor usando incorporação de texto. Obrigatório se query_vector não for fornecido."
+    llm_description: "Text to be automatically converted to a vector embedding for similarity search. Required if query_vector is not provided."
     form: llm
   - name: limit
     type: number

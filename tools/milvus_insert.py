@@ -78,12 +78,19 @@ class MilvusInsertTool(MilvusBaseTool, Tool):
             if isinstance(data, str):
                 # 尝试解析外层JSON
                 try:
-                    outer_json = json.loads(data)
+                    # 处理多行向量数据，移除所有换行符和多余空格
+                    cleaned_data = re.sub(r'\s+', ' ', data).strip()
+                    logger.debug(f"🔍 [DEBUG] 清理后的数据预览: {cleaned_data[:100]}...")
+                    
+                    outer_json = json.loads(cleaned_data)
                     
                     # 检查是否有data字段（嵌套JSON结构）
                     if isinstance(outer_json, dict) and 'data' in outer_json and isinstance(outer_json['data'], str):
                         logger.debug("🔍 [DEBUG] 检测到嵌套JSON结构，尝试解析内层数据")
                         inner_data = outer_json['data']
+                        
+                        # 清理内层数据
+                        inner_data = re.sub(r'\s+', ' ', inner_data).strip()
                         
                         # 尝试直接解析内层数据
                         try:
@@ -94,50 +101,16 @@ class MilvusInsertTool(MilvusBaseTool, Tool):
                         except json.JSONDecodeError as e:
                             logger.debug(f"⚠️ [DEBUG] 直接解析内层数据失败: {str(e)}")
                             
-                            # 尝试清理内层数据
+                            # 尝试更多方法处理内层数据
                             try:
-                                # 移除所有实际换行符，保留转义的\n
-                                cleaned = re.sub(r'(?<!\\)\n', '', inner_data)
-                                parsed_inner = json.loads(cleaned)
-                                if isinstance(parsed_inner, list):
-                                    logger.debug("✅ [DEBUG] 清理后成功解析内层数据")
-                                    return parsed_inner
-                            except json.JSONDecodeError:
-                                logger.debug("⚠️ [DEBUG] 清理后解析内层数据失败，尝试更多方法")
-                                
                                 # 方法1: 处理转义问题
-                                try:
-                                    fixed_data = inner_data.replace('\\\\', '\\').replace('\\"', '"')
-                                    parsed = json.loads(fixed_data)
-                                    if isinstance(parsed, list):
-                                        logger.debug("✅ [DEBUG] 方法1成功")
-                                        return parsed
-                                except:
-                                    logger.debug("⚠️ [DEBUG] 方法1失败")
-                                
-                                # 方法2: 移除所有空白字符
-                                try:
-                                    compact_data = re.sub(r'\s+', '', inner_data)
-                                    parsed = json.loads(compact_data)
-                                    if isinstance(parsed, list):
-                                        logger.debug("✅ [DEBUG] 方法2成功")
-                                        return parsed
-                                except:
-                                    logger.debug("⚠️ [DEBUG] 方法2失败")
-                                
-                                # 方法3: 确保是JSON数组格式
-                                try:
-                                    if not inner_data.strip().startswith('['):
-                                        inner_data = '[' + inner_data.strip()
-                                    if not inner_data.strip().endswith(']'):
-                                        inner_data = inner_data.strip() + ']'
-                                    compact_data = re.sub(r'\s+', '', inner_data)
-                                    parsed = json.loads(compact_data)
-                                    if isinstance(parsed, list):
-                                        logger.debug("✅ [DEBUG] 方法3成功")
-                                        return parsed
-                                except:
-                                    logger.debug("⚠️ [DEBUG] 方法3失败")
+                                fixed_data = inner_data.replace('\\\\', '\\').replace('\\"', '"')
+                                parsed = json.loads(fixed_data)
+                                if isinstance(parsed, list):
+                                    logger.debug("✅ [DEBUG] 方法1成功")
+                                    return parsed
+                            except:
+                                logger.debug("⚠️ [DEBUG] 方法1失败")
                     
                     # 如果外层JSON是列表，直接返回
                     elif isinstance(outer_json, list):
@@ -151,15 +124,30 @@ class MilvusInsertTool(MilvusBaseTool, Tool):
                 except json.JSONDecodeError as e:
                     logger.debug(f"⚠️ [DEBUG] 解析外层JSON失败: {str(e)}")
                     
-                    # 尝试直接解析为列表
-                    if data.strip().startswith('[') and data.strip().endswith(']'):
+                    # 尝试清理并解析整个字符串
+                    try:
+                        # 移除所有换行符和多余空格
+                        cleaned_data = re.sub(r'\s+', ' ', data).strip()
+                        parsed = json.loads(cleaned_data)
+                        if isinstance(parsed, list):
+                            logger.debug("✅ [DEBUG] 清理后成功解析为列表")
+                            return parsed
+                    except json.JSONDecodeError:
+                        logger.debug("⚠️ [DEBUG] 清理后解析失败")
+                        
+                        # 最后尝试处理可能的特殊格式
                         try:
-                            parsed = json.loads(data)
+                            # 确保数据是JSON数组格式
+                            if not cleaned_data.strip().startswith('['):
+                                cleaned_data = '[' + cleaned_data.strip()
+                            if not cleaned_data.strip().endswith(']'):
+                                cleaned_data = cleaned_data.strip() + ']'
+                            parsed = json.loads(cleaned_data)
                             if isinstance(parsed, list):
-                                logger.debug("✅ [DEBUG] 成功直接解析为列表")
+                                logger.debug("✅ [DEBUG] 特殊处理成功")
                                 return parsed
                         except:
-                            logger.debug("⚠️ [DEBUG] 直接解析为列表失败")
+                            logger.debug("⚠️ [DEBUG] 特殊处理失败")
             
             # 如果所有方法都失败，抛出异常
             raise ValueError("无法解析数据，所有方法都失败")
