@@ -51,6 +51,19 @@ parameters:
       pt_BR: "Expressão de filtro para campos escalares (ex: 'age > 18 and status == \"inactive\"')"
     llm_description: "Boolean expression for filtering entities to delete (either this or ids must be provided)"
     form: llm
+  - name: primary_field
+    type: string
+    required: false
+    label:
+      en_US: "Primary Field Name"
+      zh_Hans: "主键字段名"
+      pt_BR: "Nome do Campo Primário"
+    human_description:
+      en_US: "Override the primary key field name when deleting by IDs (default: detect from collection, fallback 'id')."
+      zh_Hans: "删除时指定主键字段名；默认为自动检测，若失败则使用 'id'。"
+      pt_BR: "Sobrescreve o nome do campo primário ao excluir por IDs (padrão: detectar da coleção, fallback 'id')."
+    llm_description: "Optional primary key field name to use when building the delete filter"
+    form: llm
   - name: partition_name
     type: string
     required: false

@@ -6,12 +6,12 @@ from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 from .milvus_base import MilvusBaseTool
 
-# 配置日志记录器
+# Configure module-level logger
 logger = logging.getLogger(__name__)
 
 
 class MilvusCollectionTool(MilvusBaseTool, Tool):
-    """Milvus 集合管理工具"""
+    """Milvus collection management tool"""
     
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         logger.info(f"🚀 [DEBUG] MilvusCollectionTool._invoke() called with params: {tool_parameters}")
@@ -25,7 +25,7 @@ class MilvusCollectionTool(MilvusBaseTool, Tool):
             if not operation:
                 raise ValueError("Operation is required")
             
-            # 检查操作类型
+            # Validate requested operation
             if operation in ["create", "drop"]:
                 logger.warning(f"⚠️ [DEBUG] Operation '{operation}' is not implemented")
                 raise ValueError(f"Operation '{operation}' is not implemented. Available operations: (list, describe, stats, exists).")
@@ -78,7 +78,7 @@ class MilvusCollectionTool(MilvusBaseTool, Tool):
             yield from self._handle_error(e)
     
     def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage]:
-        """统一的错误处理"""
+        """Standardized error handling"""
         logger.error(f"🚨 [DEBUG] _handle_error() called with: {type(error).__name__}: {str(error)}")
         error_msg = str(error)
         response = {
@@ -90,7 +90,7 @@ class MilvusCollectionTool(MilvusBaseTool, Tool):
         yield self.create_json_message(response)
     
     def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage]:
-        """创建成功响应消息"""
+        """Standardized success response"""
         logger.debug(f"🎉 [DEBUG] _create_success_message() called with data: {data}")
         response = {
             "success": True,
@@ -100,7 +100,7 @@ class MilvusCollectionTool(MilvusBaseTool, Tool):
         yield self.create_json_message(response)
     
     def _list_collections(self, client) -> dict[str, Any]:
-        """列出所有集合"""
+        """Return all collections"""
         logger.debug("📋 [DEBUG] _list_collections() called")
         collections = client.list_collections()
         logger.info(f"📋 [DEBUG] Found {len(collections)} collections: {collections}")
@@ -110,9 +110,9 @@ class MilvusCollectionTool(MilvusBaseTool, Tool):
             "count": len(collections)
         }
     
-    # 待实现: 集合创建功能
+    # TODO: collection creation helper
     # def _create_collection(self, client, params: dict[str, Any]) -> dict[str, Any]:
-    #     """创建集合"""
+    #     """Create a collection (not implemented)"""
     #     logger.debug(f"🆕 [DEBUG] _create_collection() called with params: {params}")
     #     collection_name = params.get("collection_name")
     #     dimension = params.get("dimension")
@@ -128,14 +128,14 @@ class MilvusCollectionTool(MilvusBaseTool, Tool):
     #     if dimension <= 0 or dimension > 32768:
     #         raise ValueError("Dimension must be between 1 and 32768")
     #     
-    #     # 获取可选参数
+    #     # Read optional parameters
     #     metric_type = params.get("metric_type", "COSINE")
     #     auto_id = params.get("auto_id", True)
     #     description = params.get("description", "")
     #     
     #     logger.info(f"🆕 [DEBUG] Creating collection: {collection_name}, dim: {dimension}, metric: {metric_type}")
     #     
-    #     # 创建集合
+    #     # Perform create operation
     #     client.create_collection(
     #         collection_name=collection_name,
     #         dimension=dimension,
@@ -155,9 +155,9 @@ class MilvusCollectionTool(MilvusBaseTool, Tool):
     #         "description": description
     #     }
     
-    # 待实现: 集合删除功能
+    # TODO: collection drop helper
     # def _drop_collection(self, client, collection_name: str) -> dict[str, Any]:
-    #     """删除集合"""
+    #     """Drop a collection (not implemented)"""
     #     logger.debug(f"🗑️ [DEBUG] _drop_collection() called for: {collection_name}")
     #     if not client.has_collection(collection_name):
     #         raise ValueError(f"Collection '{collection_name}' does not exist")
@@ -171,7 +171,7 @@ class MilvusCollectionTool(MilvusBaseTool, Tool):
     #     }
     
     def _describe_collection(self, client, collection_name: str) -> dict[str, Any]:
-        """描述集合"""
+        """Describe target collection"""
         logger.debug(f"📄 [DEBUG] _describe_collection() called for: {collection_name}")
         if not client.has_collection(collection_name):
             raise ValueError(f"Collection '{collection_name}' does not exist")
@@ -186,7 +186,7 @@ class MilvusCollectionTool(MilvusBaseTool, Tool):
         }
     
     def _get_collection_stats(self, client, collection_name: str) -> dict[str, Any]:
-        """获取集合统计信息"""
+        """Fetch collection statistics"""
         logger.debug(f"📊 [DEBUG] _get_collection_stats() called for: {collection_name}")
         if not client.has_collection(collection_name):
             raise ValueError(f"Collection '{collection_name}' does not exist")
@@ -201,7 +201,7 @@ class MilvusCollectionTool(MilvusBaseTool, Tool):
         }
     
     def _collection_exists(self, client, collection_name: str) -> dict[str, Any]:
-        """检查集合是否存在"""
+        """Check if collection exists"""
         logger.debug(f"🔍 [DEBUG] _collection_exists() called for: {collection_name}")
         exists = client.has_collection(collection_name)
         logger.info(f"🔍 [DEBUG] Collection exists: {exists}")
@@ -213,5 +213,5 @@ class MilvusCollectionTool(MilvusBaseTool, Tool):
         }
 
 
-# 在模块级别添加调试信息
+# Emit debug message once module is imported
 logger.info("📦 [DEBUG] milvus_collection.py module loaded")

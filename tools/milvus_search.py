@@ -10,19 +10,19 @@ from .milvus_base import MilvusBaseTool
 logger = logging.getLogger(__name__)
 
 class MilvusSearchTool(MilvusBaseTool, Tool):
-    """Milvus 向量搜索工具"""
+    """Milvus vector search tool"""
 
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
-        """执行搜索工具"""
+        """Execute the vector search tool"""
         try:
-            # 解析和验证参数
+            # Parse and validate parameters
             collection_name = tool_parameters.get("collection_name")
             vector_str = tool_parameters.get("query_vector")
 
             if not collection_name or not self._validate_collection_name(collection_name):
                 raise ValueError("Invalid or missing collection name.")
 
-            # 仅支持直接传入查询向量
+            # Only support query vectors provided directly
             if not vector_str:
                 raise ValueError("'query_vector' is required and must be a JSON array of numbers.")
             try:
@@ -30,18 +30,18 @@ class MilvusSearchTool(MilvusBaseTool, Tool):
             except ValueError as e:
                 raise ValueError(str(e))
 
-            # 获取其他参数
+            # Parse optional parameters
             limit = int(tool_parameters.get("limit", 10))
             output_fields_str = tool_parameters.get("output_fields")
             filter_expr = tool_parameters.get("filter")
             search_params_str = tool_parameters.get("search_params")
             anns_field = tool_parameters.get("anns_field", "vector")
 
-            # 准备参数
+            # Prepare search payload
             search_params = self._parse_search_params(search_params_str)
             output_fields = [f.strip() for f in output_fields_str.split(',')] if output_fields_str else None
 
-            # 执行搜索
+            # Execute search
             with self._get_milvus_client(self.runtime.credentials) as client:
                 if not client.has_collection(collection_name):
                     raise ValueError(f"Collection '{collection_name}' does not exist.")
@@ -56,7 +56,7 @@ class MilvusSearchTool(MilvusBaseTool, Tool):
                     output_fields=output_fields,
                     filter=filter_expr,
                     search_params=search_params,
-                    partition_names=None # partition_names not supported in this tool
+                    partition_names=None # partition_names are not supported in this tool
                 )
 
                 logger.info(f"✅ [DEBUG] Search completed. Found {len(results)} results.")
@@ -73,7 +73,7 @@ class MilvusSearchTool(MilvusBaseTool, Tool):
             yield from self._handle_error(e)
 
     def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage, None, None]:
-        """统一的错误处理"""
+        """Standardized error handling"""
         error_msg = str(error)
         yield self.create_json_message({
             "success": False,
@@ -82,7 +82,7 @@ class MilvusSearchTool(MilvusBaseTool, Tool):
         })
 
     def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
-        """创建成功响应消息"""
+        """Create a success response payload"""
         response = {
             "success": True,
             **data

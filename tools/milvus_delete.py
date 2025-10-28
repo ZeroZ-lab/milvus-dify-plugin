@@ -1,20 +1,19 @@
-from typing import Any, List, Union
+from typing import Any, List, Union, Optional
 from collections.abc import Generator
-import json
-import ast
 import logging
 
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 from .milvus_base import MilvusBaseTool
+from .json_utils import parse_json_relaxed
 
 logger = logging.getLogger(__name__)
 
 class MilvusDeleteTool(MilvusBaseTool, Tool):
-    """Milvus 数据删除工具"""
+    """Milvus data deletion tool"""
     
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
-        """执行删除操作"""
+        """Execute the delete tool"""
         try:
             collection_name = tool_parameters.get("collection_name")
             ids_param = tool_parameters.get("ids")
@@ -26,28 +25,33 @@ class MilvusDeleteTool(MilvusBaseTool, Tool):
 
             logger.debug(f"🔍 [DEBUG] Delete parameters - collection: {collection_name}, ids: {ids_param}, filter: {filter_expr}")
             
-            # 处理 ids 参数
+            # Parse IDs parameter when provided
             ids = None
             if ids_param:
                 ids = self._parse_ids(ids_param)
                 logger.debug(f"🔢 [DEBUG] Parsed IDs: {ids}")
                 
-            # 校验 ids 和 filter
+            # Validate that IDs or filter is present
             if not ids and not filter_expr:
                 raise ValueError("Either 'ids' or 'filter' must be provided for the delete operation.")
 
             with self._get_milvus_client(self.runtime.credentials) as client:
                 if not client.has_collection(collection_name):
                     raise ValueError(f"Collection '{collection_name}' does not exist.")
-                
-                # 执行删除
-                result = client.delete(
+
+                primary_field_param = tool_parameters.get("primary_field")
+                resolved_primary = None
+                if ids and not filter_expr:
+                    resolved_primary = self._resolve_primary_field(client, collection_name, primary_field_param)
+
+                client.delete(
                     collection_name=collection_name,
                     ids=ids,
                     filter=filter_expr,
-                    partition_name=partition_name if partition_name else None
+                    partition_name=partition_name if partition_name else None,
+                    primary_field=resolved_primary
                 )
-                
+
                 response_data = {
                     "operation": "delete",
                     "collection_name": collection_name,
@@ -61,40 +65,26 @@ class MilvusDeleteTool(MilvusBaseTool, Tool):
             yield from self._handle_error(e)
 
     def _parse_ids(self, ids_param: Union[str, List]) -> List:
-        """安全地解析 IDs 参数"""
+        """Parse IDs using relaxed JSON parsing."""
         if isinstance(ids_param, list):
             return ids_param
-        
+
         if isinstance(ids_param, str):
             try:
-                # 尝试使用 json.loads 解析
-                try:
-                    parsed_ids = json.loads(ids_param)
-                    if isinstance(parsed_ids, list):
-                        return parsed_ids
-                except json.JSONDecodeError:
-                    # 如果 JSON 解析失败，尝试使用 ast.literal_eval
-                    parsed_ids = ast.literal_eval(ids_param)
-                    if isinstance(parsed_ids, list):
-                        return parsed_ids
-                    
-                # 如果解析结果不是列表，但是是单个值，则包装成列表
-                if not isinstance(parsed_ids, list):
-                    return [parsed_ids]
-                    
-                return parsed_ids
-            except (json.JSONDecodeError, ValueError, SyntaxError):
-                # 如果所有解析方法都失败，将字符串作为单个ID处理
+                parsed = parse_json_relaxed(ids_param, expect_types=(list,))
+                return parsed
+            except Exception:
+                # Fallback: treat the raw string as a single ID
                 return [ids_param]
-        
-        # 如果不是字符串也不是列表，但有值，则作为单个ID处理
+
+        # Wrap non-string/list truthy values as a single ID
         if ids_param is not None:
             return [ids_param]
-            
+
         return []
 
     def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage, None, None]:
-        """统一的错误处理"""
+        """Standardized error response"""
         error_msg = str(error)
         yield self.create_json_message({
             "success": False,
@@ -103,7 +93,7 @@ class MilvusDeleteTool(MilvusBaseTool, Tool):
         })
     
     def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
-        """创建成功响应消息"""
+        """Standardized success response"""
         response = {
             "success": True,
             **data

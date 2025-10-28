@@ -4,10 +4,11 @@ from collections.abc import Generator
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 from .milvus_base import MilvusBaseTool
+from .json_utils import parse_json_relaxed
 
 
 class MilvusQueryTool(MilvusBaseTool, Tool):
-    """Milvus 数据查询工具"""
+    """Milvus data query tool"""
     
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         try:
@@ -20,7 +21,7 @@ class MilvusQueryTool(MilvusBaseTool, Tool):
                 raise ValueError("Invalid collection name format")
             
             with self._get_milvus_client(self.runtime.credentials) as client:
-                # 检查集合是否存在
+                # Ensure the collection exists before executing
                 if not client.has_collection(collection_name):
                     raise ValueError(f"Collection '{collection_name}' does not exist")
                 
@@ -31,7 +32,7 @@ class MilvusQueryTool(MilvusBaseTool, Tool):
             yield from self._handle_error(e)
     
     def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage]:
-        """统一的错误处理"""
+        """Standardized error response"""
         error_msg = str(error)
         yield self.create_json_message({
             "success": False,
@@ -40,7 +41,7 @@ class MilvusQueryTool(MilvusBaseTool, Tool):
         })
     
     def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage]:
-        """创建成功响应消息"""
+        """Standardized success response"""
         response = {
             "success": True,
             **data
@@ -48,28 +49,28 @@ class MilvusQueryTool(MilvusBaseTool, Tool):
         yield self.create_json_message(response)
     
     def _perform_query(self, client, collection_name: str, params: dict[str, Any]) -> dict[str, Any]:
-        """执行数据查询"""
-        # 获取查询参数
+        """Execute data query based on IDs or filter"""
+        # Read query parameters
         ids = params.get("ids")
         filter_expr = params.get("filter")
         
-        # 必须提供 ids 或 filter 之一
+        # Require at least one of ids or filter
         if not ids and not filter_expr:
             raise ValueError("Either 'ids' or 'filter' must be provided")
         
-        # 获取输出字段
+        # Normalize output fields
         output_fields = params.get("output_fields")
         if output_fields and isinstance(output_fields, str):
             output_fields = [field.strip() for field in output_fields.split(",") if field.strip()]
         elif not output_fields:
             output_fields = None
         
-        # 获取分区名称（可选）
+        # Normalize partition names (optional)
         partition_names = params.get("partition_names")
         if partition_names and isinstance(partition_names, str):
             partition_names = [name.strip() for name in partition_names.split(",") if name.strip()]
         
-        # 获取限制数量
+        # Normalize optional limit
         limit = params.get("limit")
         if limit:
             try:
@@ -77,22 +78,25 @@ class MilvusQueryTool(MilvusBaseTool, Tool):
             except (ValueError, TypeError):
                 limit = None
         
-        # 解析 ids 参数
+        # Normalize ids payload when provided
         if ids:
             ids = self._parse_ids(ids)
         
+        primary_field_param = params.get("primary_field")
+
         try:
-            # 执行查询
             if ids:
-                # 按 ID 查询 - 使用 get 方法
+                resolved_primary = self._resolve_primary_field(client, collection_name, primary_field_param)
+                # Run get operation when querying by IDs
                 results = client.get(
                     collection_name=collection_name,
                     ids=ids,
                     output_fields=output_fields,
-                    partition_names=partition_names
+                    partition_names=partition_names,
+                    primary_field=resolved_primary
                 )
             else:
-                # 按条件查询 - 使用 query 方法
+                # Run query operation when filtering
                 results = client.query(
                     collection_name=collection_name,
                     filter=filter_expr,
@@ -100,7 +104,7 @@ class MilvusQueryTool(MilvusBaseTool, Tool):
                     partition_names=partition_names,
                     limit=limit
                 )
-            
+
             return {
                 "operation": "query",
                 "collection_name": collection_name,
@@ -118,13 +122,12 @@ class MilvusQueryTool(MilvusBaseTool, Tool):
             raise ValueError(f"Query failed: {str(e)}")
     
     def _parse_ids(self, ids: Union[str, List]) -> List:
-        """解析 ID 列表"""
+        """Parse ID list using relaxed JSON parsing."""
         if isinstance(ids, str):
             try:
-                import json
-                parsed_ids = json.loads(ids)
-            except json.JSONDecodeError:
-                # 尝试按逗号分隔解析
+                parsed_ids = parse_json_relaxed(ids, expect_types=(list,))
+            except Exception:
+                # Fall back to comma-separated parsing
                 parsed_ids = [id_str.strip() for id_str in ids.split(",") if id_str.strip()]
         else:
             parsed_ids = ids
@@ -135,7 +138,7 @@ class MilvusQueryTool(MilvusBaseTool, Tool):
         if not parsed_ids:
             raise ValueError("IDs list cannot be empty")
         
-        # 尝试转换为数字（如果可能）
+        # Convert string digits to integers when possible
         converted_ids = []
         for id_val in parsed_ids:
             if isinstance(id_val, str) and id_val.isdigit():

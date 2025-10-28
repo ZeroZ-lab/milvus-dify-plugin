@@ -2,14 +2,14 @@ identity:
   name: "milvus_hybrid_search"
   author: "zeroz-lab"
   label:
-    en_US: "Milvus Hybrid Search (V2)"
-    zh_Hans: "Milvus 混合搜索 (V2)"
-    pt_BR: "Busca Híbrida Milvus (V2)"
+    en_US: "Milvus Hybrid Search"
+    zh_Hans: "Milvus 混合搜索"
+    pt_BR: "Busca Híbrida Milvus"
 description:
   human:
-    en_US: "Run Hybrid Search (V2) on multiple vector fields with reranking"
-    zh_Hans: "在多个向量字段上执行混合搜索 (V2)，并支持重排"
-    pt_BR: "Executa Busca Híbrida (V2) em vários campos vetoriais com reranqueamento"
+    en_US: "Run hybrid search across multiple vector fields with reranking"
+    zh_Hans: "在多个向量字段上执行混合搜索，并支持重排"
+    pt_BR: "Executa busca híbrida em vários campos vetoriais com reranqueamento"
   llm: "A tool for invoking Zilliz/Milvus RESTful Hybrid Search (V2) with multiple vector searches and reranking"
 parameters:
   - name: collection_name

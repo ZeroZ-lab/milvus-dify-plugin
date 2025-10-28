@@ -1,18 +1,17 @@
 from typing import Any, List, Dict
 from collections.abc import Generator
-import json
 import logging
-import re
 
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 from .milvus_base import MilvusBaseTool
+from .json_utils import parse_json_relaxed
 
 logger = logging.getLogger(__name__)
 
 
 class MilvusInsertTool(MilvusBaseTool, Tool):
-    """Milvus 数据插入工具"""
+    """Milvus data insertion tool"""
     
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         try:
@@ -28,150 +27,100 @@ class MilvusInsertTool(MilvusBaseTool, Tool):
             if not data:
                 raise ValueError("Data is required")
             
-            logger.debug(f"🔍 [DEBUG] 接收到的数据类型: {type(data)}")
+            logger.debug(f"🔍 [DEBUG] Received data type: {type(data)}")
             if isinstance(data, str):
-                logger.debug(f"🔍 [DEBUG] 数据预览: {data[:100]}...")
-            
-            # 解析数据
+                logger.debug(f"🔍 [DEBUG] Data preview: {data[:100]}...")
+
+            # Parse incoming data payload
             parsed_data = self._parse_insert_data(data)
-            
+
             with self._get_milvus_client(self.runtime.credentials) as client:
-                # 检查集合是否存在
+                # Verify target collection exists before insertion
                 if not client.has_collection(collection_name):
                     raise ValueError(f"Collection '{collection_name}' does not exist")
-                
+
                 result = self._perform_insert(client, collection_name, parsed_data, tool_parameters)
                 yield from self._create_success_message(result)
-                
+
         except Exception as e:
-            logger.error(f"❌ [ERROR] 插入操作失败: {str(e)}")
+            logger.error(f"❌ [ERROR] Insert operation failed: {str(e)}")
             yield from self._handle_error(e)
-    
+
     def _handle_error(self, error: Exception) -> Generator[ToolInvokeMessage]:
-        """统一的错误处理"""
+        """Standardized error response"""
         error_msg = str(error)
         yield self.create_json_message({
             "success": False,
             "error": error_msg,
             "error_type": type(error).__name__
         })
-    
+
     def _create_success_message(self, data: dict[str, Any]) -> Generator[ToolInvokeMessage]:
-        """创建成功响应消息"""
+        """Standardized success response"""
         response = {
             "success": True,
             **data
         }
         yield self.create_json_message(response)
-    
+
     def _parse_insert_data(self, data: str) -> List[Dict[str, Any]]:
-        """解析插入数据"""
+        """Parse and normalize insert payload"""
         try:
-            logger.debug(f"🔄 [DEBUG] 开始解析数据")
-            
-            # 如果数据已经是列表，直接返回
+            logger.debug("🔄 [DEBUG] Begin parsing insert payload")
+
             if isinstance(data, list):
-                logger.debug("✅ [DEBUG] 数据已经是列表格式")
+                logger.debug("✅ [DEBUG] Payload already a list")
                 return data
-            
-            # 如果数据是字符串，尝试解析
+
             if isinstance(data, str):
-                # 尝试解析外层JSON
+                text = data.strip()
+                logger.debug(f"🔍 [DEBUG] Payload preview: {text[:100]}...")
+
                 try:
-                    # 处理多行向量数据，移除所有换行符和多余空格
-                    cleaned_data = re.sub(r'\s+', ' ', data).strip()
-                    logger.debug(f"🔍 [DEBUG] 清理后的数据预览: {cleaned_data[:100]}...")
-                    
-                    outer_json = json.loads(cleaned_data)
-                    
-                    # 检查是否有data字段（嵌套JSON结构）
-                    if isinstance(outer_json, dict) and 'data' in outer_json and isinstance(outer_json['data'], str):
-                        logger.debug("🔍 [DEBUG] 检测到嵌套JSON结构，尝试解析内层数据")
-                        inner_data = outer_json['data']
-                        
-                        # 清理内层数据
-                        inner_data = re.sub(r'\s+', ' ', inner_data).strip()
-                        
-                        # 尝试直接解析内层数据
+                    outer = parse_json_relaxed(text, expect_types=(list, dict))
+                except Exception as e:
+                    logger.debug(f"⚠️ [DEBUG] Outer parsing failed: {e}")
+                else:
+                    if isinstance(outer, list):
+                        logger.debug("✅ [DEBUG] Parsed payload as list")
+                        return outer
+
+                    if isinstance(outer, dict):
+                        payload = outer.get("data")
+                        if payload is None:
+                            raise ValueError("Data must contain a 'data' field with JSON array string")
+
                         try:
-                            parsed_inner = json.loads(inner_data)
-                            if isinstance(parsed_inner, list):
-                                logger.debug("✅ [DEBUG] 成功直接解析内层数据")
-                                return parsed_inner
-                        except json.JSONDecodeError as e:
-                            logger.debug(f"⚠️ [DEBUG] 直接解析内层数据失败: {str(e)}")
-                            
-                            # 尝试更多方法处理内层数据
-                            try:
-                                # 方法1: 处理转义问题
-                                fixed_data = inner_data.replace('\\\\', '\\').replace('\\"', '"')
-                                parsed = json.loads(fixed_data)
-                                if isinstance(parsed, list):
-                                    logger.debug("✅ [DEBUG] 方法1成功")
-                                    return parsed
-                            except:
-                                logger.debug("⚠️ [DEBUG] 方法1失败")
-                    
-                    # 如果外层JSON是列表，直接返回
-                    elif isinstance(outer_json, list):
-                        logger.debug("✅ [DEBUG] 外层JSON已经是列表格式")
-                        return outer_json
-                    
-                    # 其他情况
-                    else:
-                        raise ValueError("Data must be a list of entities or contain a 'data' field with a JSON array string")
-                        
-                except json.JSONDecodeError as e:
-                    logger.debug(f"⚠️ [DEBUG] 解析外层JSON失败: {str(e)}")
-                    
-                    # 尝试清理并解析整个字符串
-                    try:
-                        # 移除所有换行符和多余空格
-                        cleaned_data = re.sub(r'\s+', ' ', data).strip()
-                        parsed = json.loads(cleaned_data)
-                        if isinstance(parsed, list):
-                            logger.debug("✅ [DEBUG] 清理后成功解析为列表")
-                            return parsed
-                    except json.JSONDecodeError:
-                        logger.debug("⚠️ [DEBUG] 清理后解析失败")
-                        
-                        # 最后尝试处理可能的特殊格式
-                        try:
-                            # 确保数据是JSON数组格式
-                            if not cleaned_data.strip().startswith('['):
-                                cleaned_data = '[' + cleaned_data.strip()
-                            if not cleaned_data.strip().endswith(']'):
-                                cleaned_data = cleaned_data.strip() + ']'
-                            parsed = json.loads(cleaned_data)
-                            if isinstance(parsed, list):
-                                logger.debug("✅ [DEBUG] 特殊处理成功")
-                                return parsed
-                        except:
-                            logger.debug("⚠️ [DEBUG] 特殊处理失败")
-            
-            # 如果所有方法都失败，抛出异常
-            raise ValueError("无法解析数据，所有方法都失败")
-            
+                            inner_list = parse_json_relaxed(payload, expect_types=(list,))
+                            logger.debug("✅ [DEBUG] Parsed nested payload")
+                            return inner_list
+                        except Exception as e:
+                            logger.debug(f"⚠️ [DEBUG] Nested payload parsing failed: {e}")
+
+            raise ValueError("Failed to parse data payload")
+
         except Exception as e:
-            logger.error(f"❌ [ERROR] 解析数据时发生错误: {str(e)}")
+            logger.error(f"❌ [ERROR] Error occurred while parsing data payload: {str(e)}")
             raise ValueError(f"Failed to parse data: {str(e)}")
-    
+
     def _perform_insert(self, client, collection_name: str, data: List[Dict[str, Any]], params: dict[str, Any]) -> dict[str, Any]:
-        """执行数据插入"""
-        # 获取分区名称（可选）
+        """Execute data insertion"""
+        # Optional partition name
         partition_name = params.get("partition_name")
         
-        # 执行插入
+        # Execute insert call
         try:
-            logger.debug(f"🔄 [DEBUG] 执行插入操作: 集合={collection_name}, 数据条数={len(data)}")
+            logger.debug(f"🔄 [DEBUG] Inserting into collection={collection_name}, count={len(data)}")
             
-            # 验证数据结构
+            # Validate entity structure
             for i, entity in enumerate(data):
                 if not isinstance(entity, dict):
                     raise ValueError(f"Entity at index {i} must be a dictionary")
-                
                 if not entity:
                     raise ValueError(f"Entity at index {i} cannot be empty")
+
+            # Enforce schema constraints (types, dimensions, primary key rules)
+            self._validate_and_coerce_entities(client, collection_name, data)
 
             result = client.insert(
                 collection_name=collection_name,
@@ -179,13 +128,13 @@ class MilvusInsertTool(MilvusBaseTool, Tool):
                 partition_name=partition_name
             )
             
-            # 处理返回结果 - HTTP API 返回格式
-            insert_count = len(data)  # HTTP API 不返回计数，用数据长度
+            # HTTP API does not return affected count; default to number of entities
+            insert_count = len(data)
             ids = result.get("data", {}).get("insertIds", []) if result else []
             
-            logger.debug(f"✅ [DEBUG] 插入成功: 返回ID数量={len(ids)}")
+            logger.debug(f"✅ [DEBUG] Insert succeeded: returned_id_count={len(ids)}")
             
-            # 获取插入的向量维度信息（如果有向量字段）
+            # Inspect vector field dimensionality for reporting
             vector_info = self._analyze_vector_data(data)
             
             return {
@@ -195,15 +144,16 @@ class MilvusInsertTool(MilvusBaseTool, Tool):
                 "insert_count": insert_count,
                 "ids": ids,
                 "vector_info": vector_info,
-                "data_preview": data[:3] if len(data) > 3 else data  # 显示前3条数据预览
+                "data_preview": data[:3] if len(data) > 3 else data
             }
             
         except Exception as e:
-            logger.error(f"❌ [ERROR] 插入失败: {str(e)}")
+            logger.error(f"❌ [ERROR] Insert failed: {str(e)}")
             raise ValueError(f"Insert failed: {str(e)}")
+
     
     def _analyze_vector_data(self, data: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """分析向量数据信息"""
+        """Inspect vector fields to gather metadata for the response"""
         vector_info = {
             "has_vector": False,
             "vector_fields": [],
@@ -213,12 +163,12 @@ class MilvusInsertTool(MilvusBaseTool, Tool):
         if not data:
             return vector_info
         
-        # 分析第一条数据来确定向量字段
+        # Use the first entity to infer vector field characteristics
         first_entity = data[0]
-        
+
         for field_name, field_value in first_entity.items():
             if isinstance(field_value, list) and field_value:
-                # 检查是否是数字列表（向量）
+                # Confirm the field is a numeric vector
                 if all(isinstance(x, (int, float)) for x in field_value):
                     vector_info["has_vector"] = True
                     vector_info["vector_fields"].append(field_name)
