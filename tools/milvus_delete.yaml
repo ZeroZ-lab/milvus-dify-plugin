@@ -33,9 +33,9 @@ parameters:
       zh_Hans: "实体ID"
       pt_BR: "IDs das Entidades"
     human_description:
-      en_US: "JSON array of entity IDs to delete (e.g., [1, 2, 3] or ['id1', 'id2'])"
-      zh_Hans: "要删除的实体ID的JSON数组（例如：[1, 2, 3] 或 ['id1', 'id2']）"
-      pt_BR: "Array JSON de IDs de entidades para excluir (ex: [1, 2, 3] ou ['id1', 'id2'])"
+      en_US: "JSON array of entity IDs to delete (e.g., [1, 2, 3] or [\"id1\", \"id2\"])"
+      zh_Hans: "要删除的实体ID的 JSON 数组（例如：[1, 2, 3] 或 [\"id1\", \"id2\"])"
+      pt_BR: "Array JSON de IDs de entidades para excluir (ex.: [1, 2, 3] ou [\"id1\", \"id2\"])"
     llm_description: "JSON array of entity IDs to delete (either this or filter must be provided)"
     form: llm
   - name: filter

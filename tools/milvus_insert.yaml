@@ -33,9 +33,9 @@ parameters:
       zh_Hans: "数据"
       pt_BR: "Dados"
     human_description:
-      en_US: "JSON array of entities to insert (e.g., [{'id': 1, 'vector': [0.1, 0.2], 'metadata': 'value'}])"
-      zh_Hans: "要插入的实体JSON数组（例如：[{'id': 1, 'vector': [0.1, 0.2], 'metadata': 'value'}]）"
-      pt_BR: "Array JSON de entidades para inserir (ex: [{'id': 1, 'vector': [0.1, 0.2], 'metadata': 'value'}])"
+      en_US: "JSON array of entities to insert (e.g., [{\"id\": 1, \"vector\": [0.1, 0.2], \"metadata\": \"value\"}]). Vectors must be precomputed by caller."
+      zh_Hans: "要插入的实体 JSON 数组（例如：[{\"id\": 1, \"vector\": [0.1, 0.2], \"metadata\": \"value\"}]）。向量需由调用方预先计算。"
+      pt_BR: "Array JSON de entidades para inserir (ex.: [{\"id\": 1, \"vector\": [0.1, 0.2], \"metadata\": \"value\"}]). Vetores devem ser pré-computados pelo chamador."
     llm_description: "JSON array of entities to insert, each entity should be a dictionary with vector and metadata fields"
     form: llm
   - name: partition_name

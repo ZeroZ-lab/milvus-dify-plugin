@@ -172,7 +172,7 @@ class MilvusInsertTool(MilvusBaseTool, Tool):
                 
                 if not entity:
                     raise ValueError(f"Entity at index {i} cannot be empty")
-            
+
             result = client.insert(
                 collection_name=collection_name,
                 data=data,
@@ -225,3 +225,5 @@ class MilvusInsertTool(MilvusBaseTool, Tool):
                     vector_info["dimensions"][field_name] = len(field_value)
         
         return vector_info 
+
+    

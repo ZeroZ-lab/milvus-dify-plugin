@@ -17,6 +17,7 @@ A plugin that integrates Milvus vector database with the Dify platform, providin
 - **Upsert Data**: Insert or update existing data
 - **Query Data**: Retrieve data by ID or filter conditions
 - **Delete Data**: Remove data from collections
+Note: vectors must be precomputed by the caller before insertion. Provide vectors directly in your entities (e.g., `{ "vector": [0.1, 0.2, ...] }`).
 
 ### 🔍 Vector Search
 - **Similarity Search**: Find similar vectors using various metrics
@@ -31,8 +32,8 @@ A plugin that integrates Milvus vector database with the Dify platform, providin
 
 Parameters (Dify tool form)
 - `collection_name` (string, required)
-- `searches_json` (string, required): JSON array of search objects. Each object should include at least:
-  - `data`: list of embeddings, e.g. `[[0.1, 0.2, ...]]`
+- `searches_json` (string, required): JSON array of search objects with precomputed vectors. Each object should include at least:
+  - `data`: list of embeddings (precomputed), e.g. `[[0.1, 0.2, ...]]`
   - `annsField`: target vector field name
   - `limit`: per-route top-K
   - Optional per-route keys supported by REST API: `outputFields`, `metricType`, `filter`, `params`, `radius`, `range_filter`, `ignoreGrowing`
@@ -41,7 +42,7 @@ Parameters (Dify tool form)
 - Optional top-level: `limit`, `offset`, `output_fields` (comma sep), `partition_names` (comma sep), `consistency_level`, `grouping_field`, `group_size`, `strict_group_size` (boolean), `function_score` (string JSON)
 
 Built-in validation
-- Each search item must have `annsField` (non-empty), `data` (non-empty array), and `limit` (> 0 integer).
+- Each search item must have `annsField` (non-empty) and `limit` (> 0 integer), and provide `data` (non-empty array) with numeric vectors.
 - If `rerank_strategy = weighted`, `rerank_params.weights` must be numeric and its length must equal the number of search routes.
 - If top-level `limit` is provided, ensure `limit + offset < 16384` (API limit).
 
@@ -70,5 +71,3 @@ Configure your Milvus connection in the Dify platform:
 ## License
 
 MIT License
-
-

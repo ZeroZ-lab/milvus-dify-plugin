@@ -33,10 +33,10 @@ parameters:
       zh_Hans: "Searches JSON"
       pt_BR: "Searches JSON"
     human_description:
-      en_US: "JSON array of search objects as in REST docs. Example: [{\"data\":[[0.1,0.2]],\"annsField\":\"vector\",\"limit\":10,\"outputFields\":[\"*\"]}]"
-      zh_Hans: "按照文档格式提供 search 对象的 JSON 数组。例如：[{\"data\":[[0.1,0.2]],\"annsField\":\"vector\",\"limit\":10,\"outputFields\":[\"*\"]}]"
-      pt_BR: "Array JSON de objetos de pesquisa conforme a documentação. Ex.: [{\"data\":[[0.1,0.2]],\"annsField\":\"vector\",\"limit\":10,\"outputFields\":[\"*\"]}]"
-    llm_description: "A JSON array of search objects for hybrid search"
+      en_US: "JSON array of search objects per REST docs. Each item must include precomputed 'data' vectors. Example: [{\"data\":[[0.1,0.2]],\"annsField\":\"vector\",\"limit\":10,\"outputFields\":[\"*\"]}]"
+      zh_Hans: "按文档格式提供 search 对象的 JSON 数组。每项必须包含已预计算的 'data' 向量。例如：[{\"data\":[[0.1,0.2]],\"annsField\":\"vector\",\"limit\":10,\"outputFields\":[\"*\"]}]"
+      pt_BR: "Array JSON de objetos de busca conforme a documentação. Cada item deve incluir vetores 'data' pré-computados. Ex.: [{\"data\":[[0.1,0.2]],\"annsField\":\"vector\",\"limit\":10,\"outputFields\":[\"*\"]}]"
+    llm_description: "A JSON array of search objects for hybrid search. Each must include 'data' vectors."
     form: llm
   - name: rerank_strategy
     type: select
@@ -211,4 +211,3 @@ parameters:
 extra:
   python:
     source: tools/milvus_hybrid_search.py
-

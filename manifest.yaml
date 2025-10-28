@@ -17,8 +17,7 @@ resource:
   memory: 268435456
   permission:
     model:
-      enabled: true
-      text_embedding: true
+      enabled: false
 plugins:
   tools:
     - provider/milvus.yaml
