@@ -367,6 +367,35 @@ class MilvusHttpClient:
         
         response = self._make_request('POST', '/v2/vectordb/entities/query', request_data)
         return response.get('data', [])
+
+    def hybrid_search(self, payload: Dict[str, Any]) -> list:
+        """混合搜索 (Hybrid Search V2)
+
+        透传符合 Zilliz RESTful Hybrid Search (V2) 规格的请求体，
+        例如：
+        {
+            "collectionName": "xxx",
+            "search": [ {"data": [[...]], "annsField": "vector", "limit": 10 } ],
+            "rerank": {"strategy": "rrf", "params": {"k": 10}},
+            "limit": 3,
+            "outputFields": ["*"]
+        }
+        """
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be a dict for hybrid_search")
+
+        if not payload.get("collectionName"):
+            raise ValueError("'collectionName' is required in payload for hybrid_search")
+
+        if not payload.get("search") or not isinstance(payload.get("search"), list):
+            raise ValueError("'search' array is required in payload for hybrid_search")
+
+        response = self._make_request(
+            'POST',
+            '/v2/vectordb/entities/hybrid_search',
+            payload
+        )
+        return response.get('data', [])
     
     def get(self, collection_name: str, ids: List[Any], output_fields: Optional[List[str]] = None,
             partition_names: Optional[List[str]] = None):

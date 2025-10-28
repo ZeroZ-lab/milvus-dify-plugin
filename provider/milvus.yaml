@@ -60,6 +60,7 @@ credentials_for_provider:
 tools:
   - tools/milvus_collection.yaml
   - tools/milvus_search.yaml
+  - tools/milvus_hybrid_search.yaml
   - tools/milvus_insert.yaml
   - tools/milvus_query.yaml
   - tools/milvus_delete.yaml

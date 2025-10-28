@@ -1,0 +1,214 @@
+identity:
+  name: "milvus_hybrid_search"
+  author: "zeroz-lab"
+  label:
+    en_US: "Milvus Hybrid Search (V2)"
+    zh_Hans: "Milvus 混合搜索 (V2)"
+    pt_BR: "Busca Híbrida Milvus (V2)"
+description:
+  human:
+    en_US: "Run Hybrid Search (V2) on multiple vector fields with reranking"
+    zh_Hans: "在多个向量字段上执行混合搜索 (V2)，并支持重排"
+    pt_BR: "Executa Busca Híbrida (V2) em vários campos vetoriais com reranqueamento"
+  llm: "A tool for invoking Zilliz/Milvus RESTful Hybrid Search (V2) with multiple vector searches and reranking"
+parameters:
+  - name: collection_name
+    type: string
+    required: true
+    label:
+      en_US: "Collection Name"
+      zh_Hans: "集合名称"
+      pt_BR: "Nome da Coleção"
+    human_description:
+      en_US: "Target collection to run hybrid search on"
+      zh_Hans: "执行混合搜索的目标集合"
+      pt_BR: "Coleção alvo para executar a busca híbrida"
+    llm_description: "Collection name to run hybrid search"
+    form: llm
+  - name: searches_json
+    type: string
+    required: true
+    label:
+      en_US: "Searches JSON"
+      zh_Hans: "Searches JSON"
+      pt_BR: "Searches JSON"
+    human_description:
+      en_US: "JSON array of search objects as in REST docs. Example: [{\"data\":[[0.1,0.2]],\"annsField\":\"vector\",\"limit\":10,\"outputFields\":[\"*\"]}]"
+      zh_Hans: "按照文档格式提供 search 对象的 JSON 数组。例如：[{\"data\":[[0.1,0.2]],\"annsField\":\"vector\",\"limit\":10,\"outputFields\":[\"*\"]}]"
+      pt_BR: "Array JSON de objetos de pesquisa conforme a documentação. Ex.: [{\"data\":[[0.1,0.2]],\"annsField\":\"vector\",\"limit\":10,\"outputFields\":[\"*\"]}]"
+    llm_description: "A JSON array of search objects for hybrid search"
+    form: llm
+  - name: rerank_strategy
+    type: select
+    required: false
+    label:
+      en_US: "Rerank Strategy"
+      zh_Hans: "重排策略"
+      pt_BR: "Estratégia de Reranqueamento"
+    human_description:
+      en_US: "Strategy for reranking combined results"
+      zh_Hans: "对合并结果进行重排的策略"
+      pt_BR: "Estratégia para reranquear resultados combinados"
+    llm_description: "Reranking strategy"
+    form: form
+    options:
+      - value: rrf
+        label:
+          en_US: "RRF"
+          zh_Hans: "RRF"
+          pt_BR: "RRF"
+      - value: weighted
+        label:
+          en_US: "Weighted"
+          zh_Hans: "加权"
+          pt_BR: "Ponderado"
+  - name: rerank_params
+    type: string
+    required: false
+    label:
+      en_US: "Rerank Params (JSON)"
+      zh_Hans: "重排参数 (JSON)"
+      pt_BR: "Parâmetros de Reranqueamento (JSON)"
+    human_description:
+      en_US: "JSON object for reranking params, e.g. {\"k\":10} for rrf"
+      zh_Hans: "重排参数的 JSON 对象，例如 rrf 使用 {\"k\":10}"
+      pt_BR: "Objeto JSON de parâmetros, p.ex. {\"k\":10} para rrf"
+    llm_description: "JSON object of rerank parameters"
+    form: llm
+  - name: limit
+    type: number
+    required: false
+    label:
+      en_US: "Top K"
+      zh_Hans: "返回条数"
+      pt_BR: "Top K"
+    human_description:
+      en_US: "Total number of entities to return"
+      zh_Hans: "返回的实体条数"
+      pt_BR: "Número total de entidades a retornar"
+    llm_description: "Top-K of final results"
+    form: llm
+  - name: output_fields
+    type: string
+    required: false
+    label:
+      en_US: "Output Fields"
+      zh_Hans: "输出字段"
+      pt_BR: "Campos de Saída"
+    human_description:
+      en_US: "Comma-separated fields to include in final results"
+      zh_Hans: "最终结果包含的字段，逗号分隔"
+      pt_BR: "Campos separados por vírgula para incluir nos resultados"
+    llm_description: "Comma-separated output fields"
+    form: llm
+  - name: partition_names
+    type: string
+    required: false
+    label:
+      en_US: "Partition Names"
+      zh_Hans: "分区名称"
+      pt_BR: "Nomes das Partições"
+    human_description:
+      en_US: "Comma-separated list of partitions to search"
+      zh_Hans: "要搜索的分区列表，逗号分隔"
+      pt_BR: "Lista de partições para pesquisar, separadas por vírgula"
+    llm_description: "Partitions to search"
+    form: llm
+  - name: consistency_level
+    type: select
+    required: false
+    label:
+      en_US: "Consistency Level"
+      zh_Hans: "一致性级别"
+      pt_BR: "Nível de Consistência"
+    human_description:
+      en_US: "Consistency level for this search"
+      zh_Hans: "该搜索的一致性级别"
+      pt_BR: "Nível de consistência para esta busca"
+    llm_description: "Consistency level"
+    form: form
+    options:
+      - value: Strong
+        label:
+          en_US: "Strong"
+          zh_Hans: "Strong"
+          pt_BR: "Strong"
+      - value: Eventually
+        label:
+          en_US: "Eventually"
+          zh_Hans: "Eventually"
+          pt_BR: "Eventually"
+      - value: Bounded
+        label:
+          en_US: "Bounded"
+          zh_Hans: "Bounded"
+          pt_BR: "Bounded"
+  - name: offset
+    type: number
+    required: false
+    label:
+      en_US: "Offset"
+      zh_Hans: "偏移量"
+      pt_BR: "Offset"
+    human_description:
+      en_US: "Number of entities to skip"
+      zh_Hans: "跳过的实体数量"
+      pt_BR: "Número de entidades a pular"
+    llm_description: "Pagination offset"
+    form: llm
+  - name: grouping_field
+    type: string
+    required: false
+    label:
+      en_US: "Grouping Field"
+      zh_Hans: "分组字段"
+      pt_BR: "Campo de Agrupamento"
+    human_description:
+      en_US: "Field name used to group results"
+      zh_Hans: "用于聚合结果的字段名"
+      pt_BR: "Campo usado para agrupar resultados"
+    llm_description: "Field used to group results"
+    form: llm
+  - name: group_size
+    type: number
+    required: false
+    label:
+      en_US: "Group Size"
+      zh_Hans: "每组数量"
+      pt_BR: "Tamanho do Grupo"
+    human_description:
+      en_US: "Number of entities to return for each group (with grouping_field)"
+      zh_Hans: "每组返回的数量（与 grouping_field 一起使用）"
+      pt_BR: "Número por grupo (com grouping_field)"
+    llm_description: "Per-group limit"
+    form: llm
+  - name: strict_group_size
+    type: boolean
+    required: false
+    label:
+      en_US: "Strict Group Size"
+      zh_Hans: "严格每组数量"
+      pt_BR: "Tamanho de Grupo Estrito"
+    human_description:
+      en_US: "Return only top k entities for each group (with grouping_field)"
+      zh_Hans: "仅返回每组前 k 条（与 grouping_field 一起使用）"
+      pt_BR: "Retorna apenas top k por grupo (com grouping_field)"
+    llm_description: "Only top-k per group"
+    form: llm
+  - name: function_score
+    type: string
+    required: false
+    label:
+      en_US: "Function Score (JSON)"
+      zh_Hans: "Function Score (JSON)"
+      pt_BR: "Function Score (JSON)"
+    human_description:
+      en_US: "Function settings JSON. Example: {\"name\":\"bm25\",\"type\":\"BM25\",\"inputFieldNames\":[\"text\"]}"
+      zh_Hans: "函数设置 JSON。例如：{\"name\":\"bm25\",\"type\":\"BM25\",\"inputFieldNames\":[\"text\"]}"
+      pt_BR: "JSON de configurações de função. Ex.: {\"name\":\"bm25\",\"type\":\"BM25\",\"inputFieldNames\":[\"text\"]}"
+    llm_description: "Function score JSON"
+    form: llm
+extra:
+  python:
+    source: tools/milvus_hybrid_search.py
+
