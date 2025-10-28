@@ -13,11 +13,19 @@ A plugin that integrates Milvus vector database with the Dify platform, providin
 - **Check Existence**: Verify if collections exist
 
 ### 📥 Data Operations
-- **Insert Data**: Add vectors and metadata to collections
+- **Insert Data**: Add vectors and metadata to collections (vectors must be precomputed by the caller)
 - **Upsert Data**: Insert or update existing data
-- **Query Data**: Retrieve data by ID or filter conditions
-- **Delete Data**: Remove data from collections
-Note: vectors must be precomputed by the caller before insertion. Provide vectors directly in your entities (e.g., `{ "vector": [0.1, 0.2, ...] }`).
+- **Query Data**: Retrieve data by ID or filter conditions (auto-detects the primary-key field)
+- **Delete Data**: Remove data from collections (accepts IDs or filter expressions)
+
+When inserting, provide vectors directly in each entity, for example:
+
+```json
+[
+  {"id": 1, "vector": [0.1, 0.2, 0.3], "metadata": "doc-1"},
+  {"id": 2, "vector": [0.4, 0.5, 0.6], "metadata": "doc-2"}
+]
+```
 
 ### 🔍 Vector Search
 - **Similarity Search**: Find similar vectors using various metrics
@@ -25,10 +33,10 @@ Note: vectors must be precomputed by the caller before insertion. Provide vector
 - **Multi-Vector Search**: Search with multiple query vectors
 - **Custom Parameters**: Adjust search behavior parameters
 
-### 🔀 Hybrid Search (V2)
+### 🔀 Hybrid Search
 - Combine results from multiple vector fields in one request and rerank with a strategy.
 - Endpoint: `/v2/vectordb/entities/hybrid_search` (the plugin auto-injects `dbName`).
-- Tool: Milvus Hybrid Search (V2).
+- Tool name in Dify: **Milvus Hybrid Search**.
 
 Parameters (Dify tool form)
 - `collection_name` (string, required)
@@ -38,25 +46,32 @@ Parameters (Dify tool form)
   - `limit`: per-route top-K
   - Optional per-route keys supported by REST API: `outputFields`, `metricType`, `filter`, `params`, `radius`, `range_filter`, `ignoreGrowing`
 - `rerank_strategy` (select): `rrf` or `weighted`
-- `rerank_params` (string): JSON. For `rrf`: `{ "k": 10 }`; for `weighted`: `{ "weights": [0.6, 0.4] }`
-- Optional top-level: `limit`, `offset`, `output_fields` (comma sep), `partition_names` (comma sep), `consistency_level`, `grouping_field`, `group_size`, `strict_group_size` (boolean), `function_score` (string JSON)
+- `rerank_params` (string or JSON object): For `rrf` use `{ "k": 10 }`; for `weighted` use `{ "weights": [0.6, 0.4] }`
+- Optional top-level: `limit`, `offset`, `output_fields` (comma-separated string or JSON array), `partition_names` (comma-separated string or JSON array), `consistency_level`, `grouping_field`, `group_size`, `strict_group_size` (boolean), `function_score` (JSON)
 
 Built-in validation
 - Each search item must have `annsField` (non-empty) and `limit` (> 0 integer), and provide `data` (non-empty array) with numeric vectors.
 - If `rerank_strategy = weighted`, `rerank_params.weights` must be numeric and its length must equal the number of search routes.
 - If top-level `limit` is provided, ensure `limit + offset < 16384` (API limit).
+- If `output_fields` or `partition_names` are provided as strings, they are split by comma after trimming whitespace.
 
 Example
 ```
 searches_json = [
-  {"data": [[0.6734, 0.7392]], "annsField": "float_vector_1", "limit": 10, "outputFields": ["*"]},
-  {"data": [[0.0753, 0.9971]], "annsField": "float_vector_2", "limit": 10, "outputFields": ["*"]}
+  {
+    "data": [[0.12, 0.34, 0.56]],
+    "annsField": "vector",
+    "limit": 10,
+    "outputFields": ["*"]
+  }
 ]
 rerank_strategy = rrf
 rerank_params = {"k": 10}
 limit = 3
-output_fields = user_id,word_count,book_describe
+output_fields = "user_id,book_title"
 ```
+
+> If you manage tool parameters via code, `searches_json` and `output_fields` can also be passed as native JSON structures (list/dict) instead of strings. The plugin will normalize both formats.
 
 ## Installation & Configuration
 
